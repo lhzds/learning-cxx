@@ -1,4 +1,6 @@
 ﻿#include "../exercise.h"
+#include <cstring>
+#include <vector>
 
 // READ: 类模板 <https://zh.cppreference.com/w/cpp/language/class_template>
 
@@ -10,6 +12,8 @@ struct Tensor4D {
     Tensor4D(unsigned int const shape_[4], T const *data_) {
         unsigned int size = 1;
         // TODO: 填入正确的 shape 并计算 size
+        std::memcpy(shape, shape_, 4 * sizeof(unsigned int));
+        for (int i = 0; i < 4; ++i) { size *= shape_[i]; }
         data = new T[size];
         std::memcpy(data, data_, size * sizeof(T));
     }
@@ -28,6 +32,28 @@ struct Tensor4D {
     // 则 `this` 与 `others` 相加时，3 个形状为 `[1, 2, 1, 4]` 的子张量各自与 `others` 对应项相加。
     Tensor4D &operator+=(Tensor4D const &others) {
         // TODO: 实现单向广播的加法
+        auto get_elem = [](Tensor4D const &tensor, std::vector<int> indecies) -> T * {
+            const auto &[shape, data] = tensor;
+            std::vector<int> strides(4, 1);
+            for (int i = 2; i >= 0; --i) { strides[i] = strides[i + 1] * shape[i + 1]; }
+            
+            T *elem_ptr(data);
+            for (int i = 0; i < indecies.size(); ++i) {
+                auto idx = (shape[i] == 1) ? 0 : indecies[i];
+                elem_ptr += idx * strides[i];
+            }
+            return elem_ptr;
+        };
+
+        for (int i = 0; i < shape[0]; ++i) {
+            for (int j = 0; j < shape[1]; ++j) {
+                for (int k = 0; k < shape[2]; ++k) {
+                    for (int l = 0; l < shape[3]; ++l) {
+                        *get_elem(*this, {i, j, k, l}) += *get_elem(others, {i, j, k, l});
+                    }
+                }
+            }
+        }
         return *this;
     }
 };
